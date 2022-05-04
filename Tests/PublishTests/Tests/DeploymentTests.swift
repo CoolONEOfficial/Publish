@@ -62,6 +62,8 @@ final class DeploymentTests: PublishTestCase {
 
         try shellOut(to: [
             "git init",
+            // Not all git installations init with a master branch.
+            "git checkout master || git checkout -b master",
             "git config --local receive.denyCurrentBranch updateInstead"
         ], at: remote.path)
 
@@ -86,7 +88,14 @@ final class DeploymentTests: PublishTestCase {
         let remote = try container.createSubfolder(named: "Remote.git")
         let repo = try container.createSubfolder(named: "Repo")
 
-        try shellOut(to: .gitInit(), at: remote.path)
+        try shellOut(
+          to: [
+            "git init",
+            // Not all git installations init with a master branch.
+            "git checkout master || git checkout -b master"
+          ],
+          at: remote.path
+        )
         
         // First generate
         try publishWebsite(in: repo, using: [
@@ -114,15 +123,35 @@ final class DeploymentTests: PublishTestCase {
         XCTAssertTrue(infoMessage.contains("receive.denyCurrentBranch"))
         XCTAssertTrue(infoMessage.contains("[remote rejected]"))
     }
-}
 
-extension DeploymentTests {
-    static var allTests: Linux.TestList<DeploymentTests> {
-        [
-            ("testDeploymentSkippedByDefault", testDeploymentSkippedByDefault),
-            ("testGenerationStepsAndPluginsSkippedWhenDeploying", testGenerationStepsAndPluginsSkippedWhenDeploying),
-            ("testGitDeploymentMethod", testGitDeploymentMethod),
-            ("testGitDeploymentMethodWithError",testGitDeploymentMethodWithError)
-        ]
+    func testDeployingUsingCustomOutputFolder() throws {
+        let container = try Folder.createTemporary()
+
+        // First generate
+        try publishWebsite(in: container, using: [
+            .addMarkdownFiles(),
+            .generateHTML(withTheme: .foundation)
+        ], content: [
+            "one/a.md": "Text"
+        ])
+
+        // Then deploy
+        CommandLine.arguments.append("--deploy")
+
+        var outputFolder: Folder?
+
+        try publishWebsite(in: container, using: [
+            .deploy(using: DeploymentMethod(name: "Test") { context in
+                outputFolder = try context.createDeploymentFolder(
+                    withPrefix: "Test",
+                    outputFolderPath: "CustomOutput",
+                    configure: { _ in }
+                )
+            })
+        ])
+
+        let folder = try require(outputFolder)
+        let subfolder = try folder.subfolder(named: "CustomOutput")
+        XCTAssertTrue(subfolder.containsSubfolder(at: "one/a"))
     }
 }
