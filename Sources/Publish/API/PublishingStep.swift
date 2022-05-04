@@ -506,7 +506,7 @@ public extension PublishingStep where Site: MultiLanguageWebsite {
     static func addMarkdownFiles(at path: Path = "Content") -> Self {
         step(named: "Add Markdown files from '\(path)' folder") { context in
             let folder = try context.folder(at: path)
-            try MarkdownFileHandler().addMarkdownFiles(in: folder, to: &context)
+            try await MarkdownFileHandler().addMarkdownFiles(in: folder, to: &context)
         }
     }
     
@@ -538,7 +538,7 @@ public extension PublishingStep where Site: MultiLanguageWebsite {
                 fileMode: fileMode,
                 context: context
             )
-            try generator.generate()
+            try await generator.generate()
         }
     }
     
@@ -566,7 +566,7 @@ public extension PublishingStep where Site: MultiLanguageWebsite {
                 context: context,
                 date: date
             )
-            try generator.generate()
+            try await generator.generate()
         }
     }
 
