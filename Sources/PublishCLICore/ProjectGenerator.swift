@@ -101,12 +101,13 @@ private extension ProjectGenerator {
         }
 
         try folder.createFile(named: "Package.swift").write("""
-        // swift-tools-version:5.2
+        // swift-tools-version:5.5
 
         import PackageDescription
 
         let package = Package(
             name: "\(name)",
+            platforms: [.macOS(.v12)],
             products: [
                 .\(kind.buildProduct)(
                     name: "\(name)",
@@ -117,7 +118,7 @@ private extension ProjectGenerator {
                 .package(name: "Publish", \(dependencyString))
             ],
             targets: [
-                .target(
+                .executableTarget(
                     name: "\(name)",
                     dependencies: ["Publish"]
                 )
@@ -129,13 +130,14 @@ private extension ProjectGenerator {
     func generateMainFile() throws {
         let path = "Sources/\(name)/main.swift"
 
+        let websiteProtocol = (name == "Website") ? "Publish.Website" : "Website"
         try folder.createFileIfNeeded(at: path).write("""
         import Foundation
         import Publish
         import Plot
 
         // This type acts as the configuration for your website.
-        struct \(name): Website {
+        struct \(name): \(websiteProtocol) {
             enum SectionID: String, WebsiteSectionID {
                 // Add the sections that you want your website to contain here:
                 case posts

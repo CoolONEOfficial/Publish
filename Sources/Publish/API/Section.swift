@@ -123,6 +123,11 @@ internal extension Section {
         updateLastItemModificationDateIfNeeded(to: item.date)
         items.append(item)
     }
+    
+    mutating func replaceItems(with newItems: [Item<Site>]) {
+        items = newItems
+        rebuildIndexes()
+    }
 }
 
 private extension Section {
