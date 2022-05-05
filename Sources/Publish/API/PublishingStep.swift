@@ -515,9 +515,9 @@ public extension PublishingStep where Site: MultiLanguageWebsite {
     /// files within them as items, while root files will be parsed as pages.
     static func addMarkdownFiles() -> Self {
         step(named: "Add Markdown files from folder of each language") { context in
-            try context.site.languages.forEach { language in
+            try await context.site.languages.asyncForEach { language in
                 let folder = try context.folder(at: Path(context.site.contentFolder(for: language)))
-                try MarkdownFileHandler().addMarkdownFiles(in: folder, to: &context, in: language)
+                try await MarkdownFileHandler().addMarkdownFiles(in: folder, to: &context, in: language)
             }
         }
     }
@@ -566,6 +566,7 @@ public extension PublishingStep where Site: MultiLanguageWebsite {
                 context: context,
                 date: date
             )
+            
             try await generator.generate()
         }
     }

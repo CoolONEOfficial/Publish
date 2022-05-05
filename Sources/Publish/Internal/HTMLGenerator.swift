@@ -175,9 +175,9 @@ private extension HTMLGenerator where Site: MultiLanguageWebsite {
         }
     }
     
-    func generateSectionHTML() throws {
-        for section in context.sections {
-            try context.site.languages.forEach { language in
+    func generateSectionHTML() async throws {
+        try await context.sections.concurrentForEach { section in
+            try await context.site.languages.concurrentForEach { language in
                 let localizedSection = context.section(section.id, in: language)
                 
                 try outputHTML(
@@ -187,7 +187,7 @@ private extension HTMLGenerator where Site: MultiLanguageWebsite {
                     fileMode: .foldersAndIndexFiles
                 )
             }
-            for item in section.items {
+            try await section.items.concurrentForEach { item in
                 try outputHTML(
                     for: item,
                     indentedBy: indentation,
@@ -198,8 +198,8 @@ private extension HTMLGenerator where Site: MultiLanguageWebsite {
         }
     }
     
-    func generatePageHTML() throws {
-        for page in context.pages.values {
+    func generatePageHTML() async throws {
+        try await context.pages.values.concurrentForEach { page in
             try outputHTML(
                 for: page,
                 indentedBy: indentation,
@@ -209,12 +209,12 @@ private extension HTMLGenerator where Site: MultiLanguageWebsite {
         }
     }
     
-    func generateTagHTMLIfNeeded() throws {
+    func generateTagHTMLIfNeeded() async throws {
         guard let config = context.site.tagHTMLConfig else {
             return
         }
         
-        try context.site.languages.forEach { language in
+        try await context.site.languages.asyncForEach { language in
             let pathPrefix = context.site.pathPrefix(for: language)
             let allTags = context.allTags(in: language)
             var listPage = TagListPage(
@@ -229,7 +229,8 @@ private extension HTMLGenerator where Site: MultiLanguageWebsite {
                 let listFile = try context.createOutputFile(at: listPath)
                 try listFile.write(listHTML.render(indentedBy: indentation))
             }
-            for tag in allTags {
+            
+            try await context.allTags.concurrentForEach { tag in
                 let detailsPath = context.site.path(for: tag)
                 let detailsContent = config.detailsContentResolver(tag)
 
@@ -241,7 +242,7 @@ private extension HTMLGenerator where Site: MultiLanguageWebsite {
                 detailsPage.language = language
                 
                 guard let detailsHTML = try theme.makeTagDetailsHTML(detailsPage, context) else {
-                    continue
+                    return
                 }
 
                 try outputHTML(

@@ -7,6 +7,76 @@
 import Files
 import CollectionConcurrencyKit
 
+//func addMarkdownFiles(
+//        in folder: Folder,
+//        to context: inout PublishingContext<Site>
+//    ) throws {
+//        let factory = context.makeMarkdownContentFactory()
+//
+//        if let indexFile = try? folder.file(named: "index.md") {
+//            do {
+//                context.index.content = try factory.makeContent(fromFile: indexFile)
+//            } catch {
+//                throw wrap(error, forPath: "\(folder.path)index.md")
+//            }
+//        }
+//
+//        for subfolder in folder.subfolders {
+//            guard let sectionID = Site.SectionID(rawValue: subfolder.name.lowercased()) else {
+//                try addPagesForMarkdownFiles(
+//                    inFolder: subfolder,
+//                    to: &context,
+//                    recursively: true,
+//                    parentPath: Path(subfolder.name),
+//                    factory: factory
+//                )
+//
+//                continue
+//            }
+//
+//            for file in subfolder.files.recursive {
+//                guard file.isMarkdown else { continue }
+//
+//                if file.nameExcludingExtension == "index", file.parent == subfolder {
+//                    let content = try factory.makeContent(fromFile: file)
+//                    context.sections[sectionID].content = content
+//                    continue
+//                }
+//
+//                do {
+//                    let fileName = file.nameExcludingExtension
+//                    let path: Path
+//
+//                    if let parentPath = file.parent?.path(relativeTo: subfolder) {
+//                        path = Path(parentPath).appendingComponent(fileName)
+//                    } else {
+//                        path = Path(fileName)
+//                    }
+//
+//                    let item = try factory.makeItem(
+//                        fromFile: file,
+//                        at: path,
+//                        sectionID: sectionID
+//                    )
+//
+//                    context.addItem(item)
+//                } catch {
+//                    let path = Path(file.path(relativeTo: folder))
+//                    throw wrap(error, forPath: path)
+//                }
+//            }
+//        }
+//
+//        try addPagesForMarkdownFiles(
+//            inFolder: folder,
+//            to: &context,
+//            recursively: false,
+//            parentPath: "",
+//            factory: factory
+//        )
+//    }
+
+
 internal struct MarkdownFileHandler<Site: Website> {
     func addMarkdownFiles(
         in folder: Folder,
@@ -185,12 +255,97 @@ private extension File {
 
 import Plot
 
+//func addMarkdownFiles(
+//        in folder: Folder,
+//        to context: inout PublishingContext<Site>,
+//        in language: Language? = nil
+//    ) throws {
+//        let factory = context.makeMarkdownContentFactory()
+//
+//        if let indexFile = try? folder.file(named: "index.md") {
+//            do {
+//                var content = try factory.makeContent(fromFile: indexFile)
+//                if content.language == nil {
+//                    content.language = language
+//                }
+//                context.add(Index(content: content))
+//            } catch {
+//                throw wrap(error, forPath: "\(folder.path)index.md")
+//            }
+//        }
+//
+//        for subfolder in folder.subfolders {
+//            guard let sectionID = Site.SectionID(rawValue: subfolder.name.lowercased()) else {
+//                try addPagesForMarkdownFiles(
+//                    inFolder: subfolder,
+//                    to: &context,
+//                    recursively: true,
+//                    parentPath: Path(subfolder.name),
+//                    factory: factory,
+//                    in: language
+//                )
+//                continue
+//            }
+//
+//            for file in subfolder.files.recursive {
+//                guard file.isMarkdown else { continue }
+//
+//                if file.nameExcludingExtension == "index", file.parent == subfolder {
+//                    let content = try factory.makeContent(fromFile: file)
+//
+//                    var localizedSection = Section<Site>(id: sectionID)
+//                    localizedSection.content = content
+//                    if localizedSection.language == nil {
+//                        localizedSection.language = language
+//                    }
+//                    context.add(localizedSection)
+//                    continue
+//                }
+//
+//                do {
+//                    let fileName = file.nameExcludingExtension
+//                    let path: Path
+//
+//                    if let parentPath = file.parent?.path(relativeTo: subfolder) {
+//                        path = Path(parentPath).appendingComponent(fileName)
+//                    } else {
+//                        path = Path(fileName)
+//                    }
+//
+//                    var item = try factory.makeItem(
+//                        fromFile: file,
+//                        at: path,
+//                        sectionID: sectionID
+//                    )
+//                    if item.language == nil {
+//                        item.language = language
+//                    }
+//
+//                    context.addItem(item)
+//                    context.add(item)
+//                } catch {
+//                    let path = Path(file.path(relativeTo: folder))
+//                    throw wrap(error, forPath: path)
+//                }
+//            }
+//        }
+//
+//        try addPagesForMarkdownFiles(
+//            inFolder: folder,
+//            to: &context,
+//            recursively: false,
+//            parentPath: "",
+//            factory: factory,
+//            in: language
+//        )
+//    }
+
 internal extension MarkdownFileHandler where Site: MultiLanguageWebsite {
     func addMarkdownFiles(
         in folder: Folder,
         to context: inout PublishingContext<Site>,
         in language: Language? = nil
-    ) throws {
+    ) async throws {
         let factory = context.makeMarkdownContentFactory()
 
         if let indexFile = try? folder.file(named: "index.md") {
@@ -205,32 +360,25 @@ internal extension MarkdownFileHandler where Site: MultiLanguageWebsite {
             }
         }
 
-        for subfolder in folder.subfolders {
+        let folderResults: [FolderResult] = try await folder.subfolders.concurrentMap { subfolder in
             guard let sectionID = Site.SectionID(rawValue: subfolder.name.lowercased()) else {
-                try addPagesForMarkdownFiles(
+                return try await .pages(makePagesForMarkdownFiles(
                     inFolder: subfolder,
-                    to: &context,
                     recursively: true,
                     parentPath: Path(subfolder.name),
                     factory: factory,
                     in: language
-                )
-                continue
+                ))
             }
 
-            for file in subfolder.files.recursive {
-                guard file.isMarkdown else { continue }
+            var sectionContent: Content?
+            
+            let items: [Item<Site>] = try await subfolder.files.recursive.concurrentCompactMap { file in
+                guard file.isMarkdown else { return nil }
 
                 if file.nameExcludingExtension == "index", file.parent == subfolder {
-                    let content = try factory.makeContent(fromFile: file)
-
-                    var localizedSection = Section<Site>(id: sectionID)
-                    localizedSection.content = content
-                    if localizedSection.language == nil {
-                        localizedSection.language = language
-                    }
-                    context.add(localizedSection)
-                    continue
+                    sectionContent = try factory.makeContent(fromFile: file)
+                    return nil
                 }
 
                 do {
@@ -248,71 +396,182 @@ internal extension MarkdownFileHandler where Site: MultiLanguageWebsite {
                         at: path,
                         sectionID: sectionID
                     )
+                    
                     if item.language == nil {
                         item.language = language
                     }
                     
-                    context.addItem(item)
-                    context.add(item)
+                    return item
                 } catch {
                     let path = Path(file.path(relativeTo: folder))
                     throw wrap(error, forPath: path)
                 }
             }
+
+            return .section(id: sectionID, content: sectionContent, items: items)
         }
 
-        try addPagesForMarkdownFiles(
+        for result in folderResults {
+            switch result {
+            case .pages(let pages):
+                for page in pages {
+                    context.addPage(page)
+                }
+            case .section(let id, let content, let items):
+                if let content = content {
+                    context.sections[id].content = content
+                    
+                    var localizedSection = Section<Site>(id: id)
+                    localizedSection.content = content
+                    if localizedSection.language == nil {
+                        localizedSection.language = language
+                    }
+                    context.add(localizedSection)
+                }
+
+                for item in items {
+                    context.add(item)
+                    context.addItem(item)
+                }
+            }
+        }
+
+        let rootPages = try await makePagesForMarkdownFiles(
             inFolder: folder,
-            to: &context,
             recursively: false,
             parentPath: "",
             factory: factory,
             in: language
         )
+
+        for page in rootPages {
+            context.addPage(page)
+        }
     }
+    
+//    func addMarkdownFiles(
+//        in folder: Folder,
+//        to context: inout PublishingContext<Site>,
+//        in language: Language? = nil
+//    ) async throws {
+//        let factory = context.makeMarkdownContentFactory()
+//
+//        if let indexFile = try? folder.file(named: "index.md") {
+//            do {
+//                var content = try factory.makeContent(fromFile: indexFile)
+//                if content.language == nil {
+//                    content.language = language
+//                }
+//                context.add(Index(content: content))
+//            } catch {
+//                throw wrap(error, forPath: "\(folder.path)index.md")
+//            }
+//        }
+//
+//        for subfolder in folder.subfolders {
+//            guard let sectionID = Site.SectionID(rawValue: subfolder.name.lowercased()) else {
+//                try addPagesForMarkdownFiles(
+//                    inFolder: subfolder,
+//                    to: &context,
+//                    recursively: true,
+//                    parentPath: Path(subfolder.name),
+//                    factory: factory,
+//                    in: language
+//                )
+//                continue
+//            }
+//
+//            for file in subfolder.files.recursive {
+//                guard file.isMarkdown else { continue }
+//
+//                if file.nameExcludingExtension == "index", file.parent == subfolder {
+//                    let content = try factory.makeContent(fromFile: file)
+//
+//                    var localizedSection = Section<Site>(id: sectionID)
+//                    localizedSection.content = content
+//                    if localizedSection.language == nil {
+//                        localizedSection.language = language
+//                    }
+//                    context.add(localizedSection)
+//                    continue
+//                }
+//
+//                do {
+//                    let fileName = file.nameExcludingExtension
+//                    let path: Path
+//
+//                    if let parentPath = file.parent?.path(relativeTo: subfolder) {
+//                        path = Path(parentPath).appendingComponent(fileName)
+//                    } else {
+//                        path = Path(fileName)
+//                    }
+//
+//                    var item = try factory.makeItem(
+//                        fromFile: file,
+//                        at: path,
+//                        sectionID: sectionID
+//                    )
+//                    if item.language == nil {
+//                        item.language = language
+//                    }
+//
+//                    context.addItem(item)
+//                    context.add(item)
+//                } catch {
+//                    let path = Path(file.path(relativeTo: folder))
+//                    throw wrap(error, forPath: path)
+//                }
+//            }
+//        }
+//
+//        try addPagesForMarkdownFiles(
+//            inFolder: folder,
+//            to: &context,
+//            recursively: false,
+//            parentPath: "",
+//            factory: factory,
+//            in: language
+//        )
+//    }
 }
 
 private extension MarkdownFileHandler where Site: MultiLanguageWebsite {
-    func addPagesForMarkdownFiles(
+    func makePagesForMarkdownFiles(
         inFolder folder: Folder,
-        to context: inout PublishingContext<Site>,
         recursively: Bool,
         parentPath: Path,
         factory: MarkdownContentFactory<Site>,
         in language: Language? = nil
-    ) throws {
-        for file in folder.files {
-            guard file.isMarkdown else { continue }
+    ) async throws -> [Page] {
+        let pages: [Page] = try await folder.files.concurrentCompactMap { file in
+            guard file.isMarkdown else { return nil }
 
             if file.nameExcludingExtension == "index", !recursively {
-                continue
+                return nil
             }
 
             let pagePath = parentPath.appendingComponent(file.nameExcludingExtension)
             var page = try factory.makePage(fromFile: file, at: pagePath)
-
+            
             if page.language == nil {
                 page.language = language
             }
             
-            context.addPage(page)
-            
+            return page
         }
 
         guard recursively else {
-            return
+            return pages
         }
 
-        for subfolder in folder.subfolders {
+        return try await pages + folder.subfolders.concurrentFlatMap { subfolder -> [Page] in
             let parentPath = parentPath.appendingComponent(subfolder.name)
 
-            try addPagesForMarkdownFiles(
+            return try await makePagesForMarkdownFiles(
                 inFolder: subfolder,
-                to: &context,
                 recursively: true,
                 parentPath: parentPath,
-                factory: factory,
-                in: language
+                factory: factory
             )
         }
     }

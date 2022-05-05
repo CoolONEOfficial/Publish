@@ -81,13 +81,15 @@ private extension RSSFeedGenerator {
 }
 
 internal extension RSSFeedGenerator where Site: MultiLanguageWebsite {
-    func generate() throws {
-        try context.site.languages.forEach{ language in
+    func generate() async throws {
+        try await context.site.languages.asyncForEach { language in
             let outputFile = try context.createOutputFile(at: "\(context.site.pathPrefix(for: language))/\(config.targetPath)")
+            let cacheFile = try context.cacheFile(named: "\(context.site.pathPrefix(for: language))_feed")
+            let oldCache = try? cacheFile.read().decoded() as Cache
             var items = [Item<Site>]()
 
             for sectionID in includedSectionIDs {
-                items += context.sections[sectionID].items(in: language)
+                items += context.sections[sectionID].items
             }
 
             items.sort { $0.date > $1.date }
@@ -96,15 +98,27 @@ internal extension RSSFeedGenerator where Site: MultiLanguageWebsite {
                 items.removeAll(where: predicate.matches)
             }
 
-            let feed = makeFeed(containing: items, in: language).render(indentedBy: config.indentation)
+            if let date = context.lastGenerationDate, let cache = oldCache {
+                if cache.config == config, cache.itemCount == items.count {
+                    let newlyModifiedItem = items.first { $0.lastModified > date }
 
+                    guard newlyModifiedItem != nil else {
+                        return try outputFile.write(cache.feed)
+                    }
+                }
+            }
+
+            let feed = await makeFeed(containing: items, in: language).render(indentedBy: config.indentation)
+
+            let newCache = Cache(config: config, feed: feed, itemCount: items.count)
+            try cacheFile.write(newCache.encoded())
             try outputFile.write(feed)
         }
     }
 }
 
 private extension RSSFeedGenerator where Site: MultiLanguageWebsite {
-    func makeFeed(containing items: [Item<Site>], in language: Language) -> RSS {
+    func makeFeed(containing items: [Item<Site>], in language: Language) async -> RSS {
         RSS(
             .title(context.site.name),
             .description(context.site.description),
@@ -114,17 +128,16 @@ private extension RSSFeedGenerator where Site: MultiLanguageWebsite {
             .pubDate(date, timeZone: context.dateFormatter.timeZone),
             .ttl(Int(config.ttlInterval)),
             .atomLink(context.site.url(for: config.targetPath)),
-            .forEach(items.prefix(config.maximumItemCount)) { item in
+            .group(await items.prefix(config.maximumItemCount).concurrentMap { item in
                 .item(
                     .guid(for: item, site: context.site),
                     .title(item.rssTitle),
                     .description(item.description),
                     .link(item.rssProperties.link ?? context.site.url(for: item)),
-                    //.link(item.rssProperties.link ?? context.site.url(for: item, in: language)),
                     .pubDate(item.date, timeZone: context.dateFormatter.timeZone),
                     .content(for: item, site: context.site)
                 )
-            }
+            })
         )
     }
 }
