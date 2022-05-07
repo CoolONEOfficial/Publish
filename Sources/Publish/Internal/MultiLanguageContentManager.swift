@@ -4,6 +4,7 @@ import Plot
 fileprivate typealias SiteDescription = String
 
 internal struct MultiLanguageContentManager {
+    @Atomic
     private static var multiLanguageContents: [SiteDescription: [String: [Language: Location]]] = [:]
     
     internal static func register<T: MultiLanguageWebsite>(_ location: Location, for site: T) {
@@ -19,7 +20,8 @@ internal struct MultiLanguageContentManager {
     }
     
     internal static func location<T: MultiLanguageWebsite>(at path: Path, in language: Language, for site: T) -> Location? {
-        multiLanguageContents[String(describing: site)]?[path.string]?[language]
+        var contents = multiLanguageContents
+        return multiLanguageContents[String(describing: site)]?[path.string]?[language]
     }
     
     internal static func alternateLinks<T: MultiLanguageWebsite>(for location: Location, in context: PublishingContext<T>) -> [Language: Path] {
