@@ -387,6 +387,7 @@ public extension PublishingContext where Site: MultiLanguageWebsite {
         }
         var dummySection = Section<Site>(id: id)
         dummySection.language = language
+        sections[id].items(in: language).forEach { dummySection.addItem($0) }
         self.add(dummySection)
         return dummySection
     }
