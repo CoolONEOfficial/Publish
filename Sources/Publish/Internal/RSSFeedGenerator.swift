@@ -89,7 +89,7 @@ internal extension RSSFeedGenerator where Site: MultiLanguageWebsite {
             var items = [Item<Site>]()
 
             for sectionID in includedSectionIDs {
-                items += context.sections[sectionID].items
+                items += context.sections[sectionID].items(in: language)
             }
 
             items.sort { $0.date > $1.date }
