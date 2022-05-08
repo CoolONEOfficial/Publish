@@ -310,11 +310,10 @@ public extension Node where Context == HTML.DocumentContext {
     static func head<T: MultiLanguageWebsite>(
         for location: Location,
         on site: T,
-        //in language: Language,
         titleSeparator: String = " | ",
         stylesheetPaths: [Path] = ["/styles.css"],
         rssFeedPath: Path? = .defaultForRSSFeed,
-        rssFeedTitle: String? = nil
+        rssFeedTitle: [Language: String]? = nil
     ) -> Node {
         var title = location.title
         
@@ -322,19 +321,20 @@ public extension Node where Context == HTML.DocumentContext {
             title = tagDetail.title
         }
 
+        let name = site.names[location.language ?? site.language]!
         if title.isEmpty {
-            title = site.name
+            title = name
         } else {
-            title.append(titleSeparator + site.name)
+            title.append(titleSeparator + name)
         }
 
         var description = location.description
 
         if description.isEmpty {
-            description = site.description
+            description = site.descriptions[location.language ?? site.language]!
         }
-        
-        let localizedRssFeedPath = rssFeedPath == nil ? nil : Path(site.pathPrefix(for: location.language!)).appendingComponent(rssFeedPath!.string)
+
+        let localizedRssFeedPaths = rssFeedPath == nil ? nil : site.languages.map { ($0, Path(site.pathPrefix(for: $0)).appendingComponent(rssFeedPath!.string)) }
         return .head(
             .encoding(.utf8),
             .siteName(site.name),
@@ -345,9 +345,11 @@ public extension Node where Context == HTML.DocumentContext {
             .forEach(stylesheetPaths, { .stylesheet($0) }),
             .viewport(.accordingToDevice),
             .unwrap(site.favicon, { .favicon($0) }),
-            .unwrap(localizedRssFeedPath, { path in
-                let title = rssFeedTitle ?? "Subscribe to \(site.name)"
-                return .rssFeedLink(path.absoluteString, title: title)
+            .unwrap(localizedRssFeedPaths, { localizedRssFeedPaths in
+                .forEach(localizedRssFeedPaths) { (language, path) in
+                    let title = rssFeedTitle?[language] ?? "Subscribe to \(site.name)"
+                    return .rssFeedLink(path.absoluteString, title: title)
+                }
             }),
             .unwrap(location.imagePath ?? site.imagePath, { path in
                 let url = site.url(for: path)

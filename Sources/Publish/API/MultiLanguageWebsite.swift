@@ -19,6 +19,10 @@ public protocol MultiLanguageWebsite: Website where ItemMetadata: MultiLanguageW
     /// Languages of the website to generate. The first language becomes default language.
     /// Can't be empty.
     var languages: [Language] { get }
+    /// Localized names of the website to generate. The first language becomes default language for name.
+    var names: [Language: String] { get }
+    /// Localized descriptions of the website to generate.  The first language becomes default language for description.
+    var descriptions: [Language: String] { get }
     /// The folder name of the markdown files of each language.
     /// Default implementation returns language code defined in ISO 639.
     /// - Parameter language: The language of the files in returned folder.
@@ -35,6 +39,10 @@ public protocol MultiLanguageWebsite: Website where ItemMetadata: MultiLanguageW
 public extension MultiLanguageWebsite {
     /// Default language of the website.
     var language: Language { languages.first! }
+    
+    var name: String { names[language]! }
+    
+    var description: String { descriptions[language]! }
     
     func contentFolder(for language: Language) -> String {
         language.rawValue
