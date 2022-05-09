@@ -6,9 +6,9 @@
 
 import Foundation
 import Files
-#if os(macOS)
-import ShellOut
-#endif
+//#if os(macOS)
+//import ShellOut
+//#endif
 
 /// Type used to implement deployment functionality for a website.
 /// When implementing reusable deployment methods that are vended as
@@ -35,72 +35,72 @@ public struct DeploymentMethod<Site: Website> {
     }
 }
 
-#if os(macOS)
-public extension DeploymentMethod {
-    /// Deploy a website to a given remote using Git.
-    /// - parameter remote: The full address of the remote to deploy to.
-    /// - parameter branch: The branch to push to and pull from (default is master).
-    static func git(_ remote: String, branch: String = "master") -> Self {
-        DeploymentMethod(name: "Git (\(remote))") { context in
-            let folder = try context.createDeploymentFolder(withPrefix: "Git") { folder in
-                if !folder.containsSubfolder(named: ".git") {
-                    try shellOut(to: .gitInit(), at: folder.path)
-
-                    try shellOut(
-                        to: "git remote add origin \(remote)",
-                        at: folder.path
-                    )
-                }
-
-                try shellOut(
-                    to: "git remote set-url origin \(remote)",
-                    at: folder.path
-                )
-
-                _ = try? shellOut(
-                    to: .gitPull(remote: "origin", branch: branch),
-                    at: folder.path
-                )
-
-                try shellOut(
-                    to: "git checkout \(branch) || git checkout -b \(branch)",
-                    at: folder.path
-                )
-
-                try folder.empty()
-            }
-
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "yyyy-MM-dd HH:mm"
-            let dateString = dateFormatter.string(from: Date())
-
-            do {
-                try shellOut(
-                    to: """
-                    git add . && git commit -a -m \"Publish deploy \(dateString)\" --allow-empty
-                    """,
-                    at: folder.path
-                )
-
-                try shellOut(
-                    to: .gitPush(remote: "origin", branch: branch),
-                    at: folder.path
-                )
-            } catch let error as ShellOutError {
-                throw PublishingError(infoMessage: error.message)
-            } catch {
-                throw error
-            }
-        }
-    }
-
-    /// Deploy a website to a given GitHub repository.
-    /// - parameter repository: The full name of the repository (including its username).
-    /// - parameter branch: The branch to push to and pull from (default is master).
-    /// - parameter useSSH: Whether an SSH connection should be used (preferred).
-    static func gitHub(_ repository: String, branch: String = "master", useSSH: Bool = true) -> Self {
-        let prefix = useSSH ? "git@github.com:" : "https://github.com/"
-        return git("\(prefix)\(repository).git", branch: branch)
-    }
-}
-#endif
+//#if os(macOS)
+//public extension DeploymentMethod {
+//    /// Deploy a website to a given remote using Git.
+//    /// - parameter remote: The full address of the remote to deploy to.
+//    /// - parameter branch: The branch to push to and pull from (default is master).
+//    static func git(_ remote: String, branch: String = "master") -> Self {
+//        DeploymentMethod(name: "Git (\(remote))") { context in
+//            let folder = try context.createDeploymentFolder(withPrefix: "Git") { folder in
+//                if !folder.containsSubfolder(named: ".git") {
+//                    try shellOut(to: .gitInit(), at: folder.path)
+//
+//                    try shellOut(
+//                        to: "git remote add origin \(remote)",
+//                        at: folder.path
+//                    )
+//                }
+//
+//                try shellOut(
+//                    to: "git remote set-url origin \(remote)",
+//                    at: folder.path
+//                )
+//
+//                _ = try? shellOut(
+//                    to: .gitPull(remote: "origin", branch: branch),
+//                    at: folder.path
+//                )
+//
+//                try shellOut(
+//                    to: "git checkout \(branch) || git checkout -b \(branch)",
+//                    at: folder.path
+//                )
+//
+//                try folder.empty()
+//            }
+//
+//            let dateFormatter = DateFormatter()
+//            dateFormatter.dateFormat = "yyyy-MM-dd HH:mm"
+//            let dateString = dateFormatter.string(from: Date())
+//
+//            do {
+//                try shellOut(
+//                    to: """
+//                    git add . && git commit -a -m \"Publish deploy \(dateString)\" --allow-empty
+//                    """,
+//                    at: folder.path
+//                )
+//
+//                try shellOut(
+//                    to: .gitPush(remote: "origin", branch: branch),
+//                    at: folder.path
+//                )
+//            } catch let error as ShellOutError {
+//                throw PublishingError(infoMessage: error.message)
+//            } catch {
+//                throw error
+//            }
+//        }
+//    }
+//
+//    /// Deploy a website to a given GitHub repository.
+//    /// - parameter repository: The full name of the repository (including its username).
+//    /// - parameter branch: The branch to push to and pull from (default is master).
+//    /// - parameter useSSH: Whether an SSH connection should be used (preferred).
+//    static func gitHub(_ repository: String, branch: String = "master", useSSH: Bool = true) -> Self {
+//        let prefix = useSSH ? "git@github.com:" : "https://github.com/"
+//        return git("\(prefix)\(repository).git", branch: branch)
+//    }
+//}
+//#endif
