@@ -4,17 +4,17 @@
 *  MIT license, see LICENSE file for details
 */
 
-#if os(macOS)
-import ShellOut
-
-extension ShellOutError: PublishingErrorConvertible {
-    func publishingError(forStepNamed stepName: String?) -> PublishingError {
-        PublishingError(
-            stepName: stepName,
-            path: nil,
-            infoMessage: message,
-            underlyingError: nil
-        )
-    }
-}
-#endif
+//#if os(macOS)
+//import ShellOut
+//
+//extension ShellOutError: PublishingErrorConvertible {
+//    func publishingError(forStepNamed stepName: String?) -> PublishingError {
+//        PublishingError(
+//            stepName: stepName,
+//            path: nil,
+//            infoMessage: message,
+//            underlyingError: nil
+//        )
+//    }
+//}
+//#endif
