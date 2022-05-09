@@ -10,7 +10,7 @@ import PackageDescription
 
 let package = Package(
     name: "Publish",
-    platforms: [.macOS(.v12)],
+    platforms: [.macOS(.v12), .iOS(.v15)],
     products: [
         .library(name: "Publish", targets: ["Publish"]),
         .executable(name: "publish-cli", targets: ["PublishCLI"])
@@ -57,7 +57,8 @@ let package = Package(
             name: "Publish",
             dependencies: [
                 "Ink", "Plot", "Files", "Codextended",
-                "ShellOut", "Sweep", "CollectionConcurrencyKit"
+                "Sweep", "CollectionConcurrencyKit",
+                .byNameItem(name: "ShellOut", condition: .when(platforms: [ .macOS ])),
             ]
         ),
         .executableTarget(
