@@ -36,11 +36,11 @@ let package = Package(
             url: "https://github.com/johnsundell/codextended.git",
             from: "0.1.0"
         ),
-        .package(
-            name: "ShellOut",
-            url: "https://github.com/johnsundell/shellout.git",
-            from: "2.3.0"
-        ),
+//        .package(
+//            name: "ShellOut",
+//            url: "https://github.com/johnsundell/shellout.git",
+//            from: "2.3.0"
+//        ),
         .package(
             name: "Sweep",
             url: "https://github.com/johnsundell/sweep.git",
@@ -58,7 +58,7 @@ let package = Package(
             dependencies: [
                 "Ink", "Plot", "Files", "Codextended",
                 "Sweep", "CollectionConcurrencyKit",
-                .byNameItem(name: "ShellOut", condition: .when(platforms: [ .macOS ])),
+                //.byNameItem(name: "ShellOut", condition: .when(platforms: [ .macOS ])),
             ]
         ),
         .executableTarget(
