@@ -39,11 +39,11 @@
       },
       {
         "package": "Plot",
-        "repositoryURL": "https://github.com/johnsundell/plot.git",
+        "repositoryURL": "https://github.com/CoolONEOfficial/plot.git",
         "state": {
-          "branch": null,
-          "revision": "80612b34252188edbef280e5375e2fc5249ac770",
-          "version": "0.9.0"
+          "branch": "open-graph-fix",
+          "revision": "a973bed37dcb949e9fee743f710cde68fee69f2f",
+          "version": null
         }
       },
       {
